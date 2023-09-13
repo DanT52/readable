@@ -34,7 +34,10 @@ int readable(char* inputPath) {
 
 	char *current = getcwd(NULL, 0);
 
-	chdir(inputPath);
+	if (inputPath){
+		chdir(inputPath);
+	}
+	
 	dir = opendir(".");
 	int count = 0;
 	
