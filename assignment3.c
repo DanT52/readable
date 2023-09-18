@@ -28,108 +28,87 @@ to respond to.
 
 
 int readable(char* inputPath) {
+    DIR *dir = NULL;
+    struct dirent *ent = NULL;
+    struct stat buf;
+    char *current = NULL;
+    int access_val;
 
-	DIR *dir =NULL;
-	struct dirent *ent = NULL;
-	struct stat buf;
-	char *file = NULL;
-	char *current = NULL;
-	int access_val;
+    // If no inputPath given, assume current working directory
+    if (!inputPath) {
+        current = getcwd(NULL, 0);
+        if (!current) {
+            fprintf(stderr, "Error: failed to get current directory. Error Num: %d, Error Msg: %s\n", errno, strerror(errno));
+            return -errno;
+        }
+        inputPath = current;
+    }
 
-	if (!inputPath){
-		current = getcwd(NULL, 0); //get the current working directory
-		if (!current){
-			fprintf(stderr, "Error: failed to get current directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
-			return -(errno);
-		}
-		inputPath = current;
-	}
+    if (lstat(inputPath, &buf) == -1) {
+        fprintf(stderr, "Error: lstat failed to read input path. Error Num: %d, Error Msg: %s\n", errno, strerror(errno));
+        return -errno;
+    }
 
+    // Check if the path is a symbolic link; if so, ignore
+    if (S_ISLNK(buf.st_mode)) {
+        return 0;
+    }
 
-	if (lstat(inputPath, &buf)==-1){
-		fprintf(stderr, "Error: lstat failed to read input path. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
-		return -(errno);
-	}
+    // Check access rights
+    access_val = access(inputPath, R_OK);
+    if (access_val == -1) {
+        fprintf(stderr, "Error: failed to access path. Error Num: %d, Error Msg: %s\n", errno, strerror(errno));
+        return -errno;
+    }
 
-	access_val = access(inputPath, R_OK);
-	if (access_val == -1){
-		fprintf(stderr, "Error: failed to access path. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
-		return -(errno);
+    // If it's a regular file
+    if (S_ISREG(buf.st_mode)) {
+        return access_val == 0 ? 1 : 0;
+    }
 
-	}
+    // If it's a directory
+    if (S_ISDIR(buf.st_mode)) {
+        current = getcwd(NULL, 0); // Save the current working directory
+        if (!current) {
+            fprintf(stderr, "Error: failed to get current directory. Error Num: %d, Error Msg: %s\n", errno, strerror(errno));
+            return -errno;
+        }
 
-	if (S_ISREG(buf.st_mode)){
-		
-		if (access_val == 0)return 1;
-		else return 0;
+        if (chdir(inputPath) == -1) {
+            fprintf(stderr, "Error: failed to change working directory. Error Num: %d, Error Msg: %s\n", errno, strerror(errno));
+            free(current);
+            return -errno;
+        }
 
-	}else if (S_ISDIR(buf.st_mode)){
-		if (access_val != 0){
-			if (ent == NULL){
-				fprintf(stderr, "Error: Path Passed in '%s' is a unreadable directory: %d, Error Msg: %s \n",inputPath, errno, strerror(errno));
-				return -(errno);
-			}
-			else return 0;
-		}
-	}else{
-		//ignore other types of files.
-		return 0;
-	}
-	
-	if (!current){
-		current = getcwd(NULL, 0); //get the current working directory
-		if (!current){
-			fprintf(stderr, "Error: failed to get current directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
-			return -(errno);
-		}
+        dir = opendir(".");
+        if (!dir) {
+            fprintf(stderr, "Error: failed to open directory. Error Num: %d, Error Msg: %s\n", errno, strerror(errno));
+            free(current);
+            return -errno;
+        }
+        
+        int count = 0;
+        while ((ent = readdir(dir)) != NULL) {
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+                continue;
+            }
 
-		if (chdir(inputPath) == -1){//change dir to the input path (this means a dir is the filepath.)
-			fprintf(stderr, "Error: failed to change working directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
-			return -(errno);
-		} 
-	}
+            int result = readable(ent->d_name);
+            if (result < 0) {
+                // Handle error but continue
+                fprintf(stderr, "Error encountered in subdir/file '%s'. Continuing with others...\n", ent->d_name);
+            } else {
+                count += result;
+            }
+        }
 
-	dir = opendir("."); //open the current directory.
-	if (!dir){
-		fprintf(stderr, "Error: failed to open current directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
-		return -(errno);
-	}
+        closedir(dir);
+        chdir(current); // Restore the original working directory
+        free(current);
 
-	int count = 0;
-	int add = 0;
-	errno = 0;
+        return count;
+    }
 
-	while ((ent = readdir(dir)) != NULL){
-		
-		file = ent->d_name;
-
-		
-		if (!strcmp(file, ".")|| !strcmp(file, ".."))continue;
-
-		
-
-		add = readable(file);
-		if (add < 0){
-			return add;
-		}
-		count += add;
-
-	}
-	if(errno != 0){
-		fprintf(stderr, "Error: failed reading directory: %d, Error Msg: %s \n", errno, strerror(errno));
-		return -(errno);
-	}
-
-	if (chdir(current) == -1){
-		fprintf(stderr, "Error: failed to change working directory to '%s'. Error Num: %d, Error Msg: %s \n",current, errno, strerror(errno));
-		return -(errno);
-	}
-	
-	if (closedir(dir)==-1){
-		fprintf(stderr, "Error: failed to close directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
-		return -(errno);
-	}
-	free(current);
-
-    return count;
+    // For other file types, simply return 0
+    return 0;
 }
