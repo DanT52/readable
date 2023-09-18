@@ -35,8 +35,6 @@ int readable(char* inputPath) {
 	char *file = NULL;
 	char *current;
 
-	
-
 	if (inputPath){
 
 		if (lstat(inputPath, &buf)==-1){
@@ -45,7 +43,7 @@ int readable(char* inputPath) {
 		}
 
 		if (S_ISREG(buf.st_mode)){
-			printf("was a reg file. ");
+			
 			if (access(inputPath, R_OK) == 0)return 1;
 
 			else if (access(inputPath, R_OK) == -1){
@@ -68,25 +66,31 @@ int readable(char* inputPath) {
 				}
 				else return 0;
 			}
-
 		}else{
 			//ignore other types of files.
 			return 0;
 		}
+		
 		current = getcwd(NULL, 0); //get the current working directory
 		if (!current){
 			fprintf(stderr, "Error: failed to get current directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
 			return -(errno);
 		}
-
 		if (chdir(inputPath) == -1){//change dir to the input path (this means a dir is the filepath.)
 			fprintf(stderr, "Error: failed to change working directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
 			return -(errno);
 
 		} 
+		
 	}
-
 	
+	else{
+		current = getcwd(NULL, 0); //get the current working directory
+		if (!current){
+			fprintf(stderr, "Error: failed to get current directory. Error Num: %d, Error Msg: %s \n", errno, strerror(errno));
+			return -(errno);
+		}
+	}
 	
 	dir = opendir("."); //open the current directory.
 	if (!dir){
@@ -105,7 +109,7 @@ int readable(char* inputPath) {
 		
 		if (!strcmp(file, ".")|| !strcmp(file, ".."))continue;
 
-		printf("CURRENT FILE: %s \n", file);
+		
 
 		add = readable(file);
 		if (add < 0){
