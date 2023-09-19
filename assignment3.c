@@ -71,7 +71,7 @@ int rec_read(char* inputPath, int first){
     if (S_ISREG(buf.st_mode))return access_val == 0 ? 1 : 0; //handle regular file, return 1 if its accesable
     
     if (S_ISDIR(buf.st_mode)) { //handle directory
-        if(access_val == 1 && !first)return 0; //if first a subdir and not readable return 0
+        if(access_val == 1 && !first)return 0; //if a subdirectory is not readable
         
         current = getcwd(NULL, 0); // save the current working directory
         if (!current) {
