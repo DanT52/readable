@@ -111,13 +111,12 @@ int file_search_loop(DIR *dir, char *current){
         }
 
         int result = rec_read(ent->d_name, 0);
-        
         if (result < 0) {// there was an error
-            free(current);
-            return result;
+            fprintf(stderr, "Error encountered in subdir/file '%s'. Continuing with others...\n", ent->d_name);
         } else {
             count += result;
         }
+        errno = 0;
     }
 
     if (errno) { // Handle errors with readdir
