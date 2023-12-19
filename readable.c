@@ -1,12 +1,3 @@
-/***********************************************************************
-name:
-	readable -- recursively count readable files.
-description:	
-	See CS 360 Files and Directories lectures for details.
-***********************************************************************/
-
-/* Includes and definitions */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
